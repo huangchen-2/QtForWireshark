@@ -29,8 +29,13 @@ WireSharkSelectUi::WireSharkSelectUi(QWidget *parent) :
     byteTree.insert(QPair<int,int>(15,15),itemlist.at(6));
     byteTree.insert(QPair<int,int>(16,17),itemlist.at(7));
     byteTree.insert(QPair<int,int>(18,19),itemlist.at(8));
-    byteTree.insert(QPair<int, int>(30,31), itemlist.at(9));
-    byteTree.insert(QPair<int,int>(32,33),itemlist.at(10));
+    byteTree.insert(QPair<int,int>(20,20),itemlist.at(9));
+    byteTree.insert(QPair<int,int>(21,21),itemlist.at(10));
+    byteTree.insert(QPair<int,int>(22,22),itemlist.at(11));
+    byteTree.insert(QPair<int,int>(23,23),itemlist.at(12));
+    byteTree.insert(QPair<int,int>(24,25),itemlist.at(13));
+    byteTree.insert(QPair<int,int>(26,29),itemlist.at(14));
+    byteTree.insert(QPair<int,int>(30,33),itemlist.at(15));
     ui->editor->setReadOnly(true);
 
 
@@ -57,6 +62,12 @@ void WireSharkSelectUi::initTreeList()
     itemlist.append(second->child(3));
     itemlist.append(second->child(4));
     itemlist.append(second->child(5));
+    itemlist.append(second->child(6));
+    itemlist.append(second->child(7));
+    itemlist.append(second->child(8));
+    itemlist.append(second->child(9));
+    itemlist.append(second->child(10));
+
 }
 
 void WireSharkSelectUi::ChangeTreeItemText(int index)
@@ -79,16 +90,59 @@ void WireSharkSelectUi::ChangeTreeItemText(int index)
     QString total = info.array.toHex().mid(32,4);
 
     QString Identification = info.array.toHex().mid(36,4);
-    qDebug()<<Identification;
+
+    QByteArray array = info.array.mid(20, 2); // Assuming array is already defined
+    QString value = array.toHex(); // Convert to hexadecimal string
+
+    auto pair = GetBit(value);
+    auto ThreebitString = pair.second.first;
+    auto ThreebitInt = QString::number(pair.first.first,16);
+    QString NO1 = ThreebitString.at(0)=='1'?"":"Don't Fragment";
+    QString NO2 = ThreebitString.at(1)=='1'?"":"More Fragments";
+    qDebug()<<ThreebitString.at(0)<<ThreebitString.at(1);
+    QString flag1 = QString("%1 . .... = Flags : %2 ,%3").arg(ThreebitString).arg(ThreebitInt)
+                        .arg(NO1+" "+NO2);
+
+    auto SixteenString = pair.second.second;
+    auto SixteenInt =  QString::number(pair.first.second,16);
+    QString flag2 = QString("... %1 = Fragment Offset:%2").arg(SixteenString).arg(SixteenInt);
+
+    QString time = info.array.toHex().mid(44,2);
+    QString Protocol ;
+    if(info.proto == "TCP") Protocol = "TCP (6)";
+    else if(info.proto == "Udp") Protocol = "UDP (17)";
+
+    QString crc = info.array.toHex().mid(48,4);
 
     second->child(0)->setText(0,QString("header length: 20 byte"));
     second->child(1)->setText(0,QString("Differentiated Services Field: %1 (DSCP: %2, ECN: %3) ").arg(hexString).arg(info.dscp).arg(info.ecn));
     second->child(2)->setText(0,QString("Total length: %1").arg( total.toInt(nullptr, 16)));
     second->child(3)->setText(0,QString("Identification: 0x%1 (%2)").arg(Identification).arg(Identification.toInt(nullptr, 16)));
-    second->child(4)->setText(0,QString("Src Port: %1").arg(info.src_port));
-    second->child(5)->setText(0,QString("Dst Port: %1").arg(info.dst_port));
+    second->child(4)->setText(0,QString("%1").arg(flag1));
+    second->child(5)->setText(0,QString("%1").arg(flag2));
+    second->child(6)->setText(0,QString("Time To Live : %1").arg(time.toInt(nullptr,16)));
+    second->child(7)->setText(0,QString("Protocol: %1").arg(Protocol));
+    second->child(8)->setText(0,QString("Header Checksum: 0x%1 [validation disabled]").arg(crc));
+    second->child(9)->setText(0,QString("Src Port: %1").arg(info.src_port));
+    second->child(10)->setText(0,QString("Dst Port: %1").arg(info.dst_port));
     first->setText(0,str);
     second->setText(0,str1);
+
+}
+
+QPair<QPair<int, int>, QPair<QString, QString> > WireSharkSelectUi::GetBit(QString str)
+{
+    bool ok;
+    int hexValue = str.toInt(&ok, 16); // Convert to integer
+    QString value = QString::number(hexValue, 2).rightJustified(16, '0'); // Convert to binary string
+    auto first = value.mid(0,3);
+    auto second = value.mid(3,13);
+    int value1 = first.toInt(nullptr,2);
+    int value2 = second.toInt(nullptr,2);
+    QPair<int,int> pair1(value1,value2);
+    QPair<QString,QString> pair2(first,second);
+    QPair<QPair<int, int>, QPair<QString, QString> > pair(pair1,pair2);
+    return pair;
 
 }
 
