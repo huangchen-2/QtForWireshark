@@ -21,15 +21,16 @@ WireSharkSelectUi::WireSharkSelectUi(QWidget *parent) :
     //设置要选中高亮的行，这里会触发QTableWidget::itemClicked的信号
     initTreeList();
     byteTree.insert(QPair<int, int>(0, 13), itemlist.at(0));
-    byteTree.insert(QPair<int,int>(32,35),itemlist.at(1));
+    byteTree.insert(QPair<int,int>(14,33),itemlist.at(1));
     byteTree.insert(QPair<int, int>(0, 5), itemlist.at(2));
     byteTree.insert(QPair<int,int>(6,11),itemlist.at(3));
     byteTree.insert(QPair<int,int>(12,13),itemlist.at(4));
     byteTree.insert(QPair<int,int>(14,14),itemlist.at(5));
     byteTree.insert(QPair<int,int>(15,15),itemlist.at(6));
     byteTree.insert(QPair<int,int>(16,17),itemlist.at(7));
-    byteTree.insert(QPair<int, int>(32,33), itemlist.at(8));
-    byteTree.insert(QPair<int,int>(34,35),itemlist.at(9));
+    byteTree.insert(QPair<int,int>(18,19),itemlist.at(8));
+    byteTree.insert(QPair<int, int>(30,31), itemlist.at(9));
+    byteTree.insert(QPair<int,int>(32,33),itemlist.at(10));
     ui->editor->setReadOnly(true);
 
 
@@ -55,6 +56,7 @@ void WireSharkSelectUi::initTreeList()
     itemlist.append(second->child(2));
     itemlist.append(second->child(3));
     itemlist.append(second->child(4));
+    itemlist.append(second->child(5));
 }
 
 void WireSharkSelectUi::ChangeTreeItemText(int index)
@@ -76,12 +78,15 @@ void WireSharkSelectUi::ChangeTreeItemText(int index)
 
     QString total = info.array.toHex().mid(32,4);
 
+    QString Identification = info.array.toHex().mid(36,4);
+    qDebug()<<Identification;
 
     second->child(0)->setText(0,QString("header length: 20 byte"));
     second->child(1)->setText(0,QString("Differentiated Services Field: %1 (DSCP: %2, ECN: %3) ").arg(hexString).arg(info.dscp).arg(info.ecn));
     second->child(2)->setText(0,QString("Total length: %1").arg( total.toInt(nullptr, 16)));
-    second->child(3)->setText(0,QString("Src Port: %1").arg(info.src_port));
-    second->child(4)->setText(0,QString("Dst Port: %1").arg(info.dst_port));
+    second->child(3)->setText(0,QString("Identification: 0x%1 (%2)").arg(Identification).arg(Identification.toInt(nullptr, 16)));
+    second->child(4)->setText(0,QString("Src Port: %1").arg(info.src_port));
+    second->child(5)->setText(0,QString("Dst Port: %1").arg(info.dst_port));
     first->setText(0,str);
     second->setText(0,str1);
 
@@ -152,8 +157,6 @@ void WireSharkSelectUi::on_treeWidget_itemClicked(QTreeWidgetItem *item, int col
     document->cursor()->clearSelection();
     int low = 0 ;
     int high = 0;
-    int col = 0 ;
-    int row = 0 ;
     for(auto value : byteTree)
     {
         if(value == item)
@@ -161,41 +164,30 @@ void WireSharkSelectUi::on_treeWidget_itemClicked(QTreeWidgetItem *item, int col
             auto key = byteTree.key(value);
             low = key.first;
             high = key.second;
-            qDebug()<<low<<high;
             break;
         }
     }
-    if(high==0) return ;
-    col = high / 16; // 计算起始列
-    row = low / 16;  // 计算起始行
+    if (high == 0) return;
+
+    int max = high ;
+    int col = low / 16 ; // 起始行数，从1开始计数
+    int row = max / 16 ; // 总行数，包括最后一行
+    int last = max % 16; // 最后一行的剩余位置
     hexmetadata->clear();
-    if(row == col)
-    {
-        hexmetadata->foreground(0,low, high-low+1, Qt::blue);
-        return;
-    }
-    // 确保我们不会错过最后一个字节的高亮
-    col = qMax(0, col);
-    row = qMax(0, row);
-    qDebug()<<col<<row;
-
-
 
     // 高亮从low到high的整个范围
-    for (int i = row; i < row + (col - row + 1); ++i) {
-        // 计算每行的起始和结束位置
-        int start = i * 16;
-        int length = qMin(16, high - start + 1); // 加1确保包括最后一个字节
-        qDebug()<<"length"<<length;
+    for (int i = col; i <= row; ++i) {
         // 应用前景色
-        if (i == row) {
-            // 如果是第一行，则从low开始
-            hexmetadata->foreground(i, low - start, length, Qt::blue);
-        } else {
-            // 否则，从上一行的结束位置开始
-            hexmetadata->foreground(i, start, length, Qt::blue);
-        }
+        int  a1 = low ;
+        int  b1 = high ;
+        if(low - i*16 <=0) a1 = 0 ;
+        else a1 -= i*16;
+        if(high - i*16 <=0) b1 = 0 ;
+        else b1 -= i*16;
+        qDebug()<<a1<<b1;
+        hexmetadata->foreground(i, a1, b1-a1+1, Qt::blue);
     }
+
 
 }
 
